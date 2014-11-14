@@ -1,0 +1,111 @@
+<?php
+
+/**
+ * Implements hook_element_info().
+ */
+function jcrop_element_info() {
+  $types = array();
+  return $types;
+}
+
+/**
+ * Implements hook_element_info_alter().
+ */
+function jcrop_element_info_alter(&$types) {
+  if (isset($types['managed_file'])) {
+    $types['managed_file']['process'][] = 'jcrop_managed_file_process';
+    $types['managed_file']['#jcrop'] = array();
+  }
+}
+
+function jcrop_managed_file_process($element, &$form_state, $form) {
+  if (empty($element['#jcrop'])) {
+    return $element;
+  }
+  libraries_load('jcrop', 'source');
+  $element['#attached']['js'][] = drupal_get_path() . '/jcrop.js';
+  return $element;
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function jcrop_libraries_info() {
+  $libraries['jcrop'] = array(
+    'name' => 'Jcrop',
+    'vendor url' => 'http://deepliquid.com/content/Jcrop.html',
+    'download url' => 'https://github.com/tapmodo/Jcrop/zipball/master',
+    'version arguments' => array(
+      'file' => 'js/jquery.Jcrop.js',
+      'pattern' => '/jquery.Jcrop.js v(\d+\.+\d+)/',
+      'lines' => 5,
+    ),
+    'files' => array(
+      'js' => array(
+        'js/jquery.Jcrop.js',
+      ),
+      'css' => array(
+        'css/jquery.Jcrop.css',
+      ),
+    ),
+    'variants' => array(
+      'minified' => array(
+        'files' => array(
+          'js' => array(
+            'js/jquery.Jcrop.min.js',
+          ),
+          'css' => array(
+            'css/jquery.Jcrop.min.css',
+          ),
+        ),
+      ),
+      'source' => array(
+        'files' => array(
+          'js' => array(
+            'js/jquery.Jcrop.min.js',
+          ),
+          'css' => array(
+            'css/jquery.Jcrop.min.css',
+          ),
+        ),
+      ),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
+ * Implements hook_requirements().
+ */
+function jcrop_requirements($phase) {
+  $requirements = array();
+
+  $t = get_t();
+
+  $requirements['jcrop_fapi'] = array(
+    'title' => $t('Jcrop Library'),
+  );
+
+  $library = libraries_detect('Jcrop');
+  $error_type = isset($library['error']) ? drupal_ucfirst($library['error']) : '';
+  $error_message = isset($library['error message']) ? $library['error message'] : '';
+
+  $library = libraries_detect('jcrop');
+  if ($library['installed']) {
+    $requirements['jcrop_fapi'] = array(
+      'title' => $t('Jcrop plugin'),
+      'value' => $library['version'],
+      'severity' => REQUIREMENT_OK,
+    );
+  } else {
+    $requirements['jcrop_fapi'] = array(
+      'title' => $t('Jcrop plugin'),
+      'value' => $t('@e', array('@e' => $error_type)),
+      'severity' => REQUIREMENT_ERROR,
+      'description' => $t('!error You need to download the !jcrop, extract the archive and place the \'jcrop\' directory in the %path directory on your server.', array('!error' => $error_message, '!jcrop' => l($t('Jcrop plugin'), $library['download url']), '%path' => 'sites/all/libraries')),
+    );
+  }
+
+  return $requirements;
+}
