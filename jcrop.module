@@ -1,5 +1,31 @@
 <?php
 
+function jcrop_menu() {
+  return array(
+    'jcrop/test' => array(
+      'title' => 'Jcrop Test',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('jcrop_test_form'),
+      'access callback' => TRUE,
+      'type' => MENU_CALLBACK
+    )
+  );
+}
+
+function jcrop_test_form($form, &$form_state) {
+  $form['jcrop'] = array(
+    '#title' => t('Jcrop'),
+    '#type' => 'managed_file',
+    '#description' => t('The uploaded image will be displayed on this page using the image style choosen below.'),
+    '#default_value' => variable_get('image_example_image_fid', ''),
+    '#upload_location' => 'public://',
+    '#jcrop' => array(
+      TRUE
+    )
+  );
+  return $form;
+}
+
 /**
  * Implements hook_element_info().
  */
@@ -13,8 +39,7 @@ function jcrop_element_info() {
  */
 function jcrop_element_info_alter(&$types) {
   if (isset($types['managed_file'])) {
-    $types['managed_file']['process'][] = 'jcrop_managed_file_process';
-    $types['managed_file']['#jcrop'] = array();
+    $types['managed_file']['#process'][] = 'jcrop_managed_file_process';
   }
 }
 
@@ -23,7 +48,21 @@ function jcrop_managed_file_process($element, &$form_state, $form) {
     return $element;
   }
   libraries_load('jcrop', 'source');
-  $element['#attached']['js'][] = drupal_get_path() . '/jcrop.js';
+  $element['#attached']['js'][] = drupal_get_path('module', 'jcrop') . '/jcrop.js';
+  $file = $element['#file'];
+  $element['x'] = $element['y'] = $element['width'] = $element['height'] = array(
+    '#type' => 'hidden',
+    '#width' => 9
+  );
+  $element['jcrop'] = array(
+    '#id' => $element['#id'] . '-jcrop',
+    '#type' => 'container',
+    'image' => array(
+      '#type' => 'markup',
+      '#markup' => 'markup'
+    )
+  );
+  drupal_add_js(array('jcrop' => array()), 'setting');
   return $element;
 }
 
