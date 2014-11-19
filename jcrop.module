@@ -1,5 +1,7 @@
 <?php
 
+module_load_include('field.inc', 'jcrop');
+
 function jcrop_menu() {
   return array(
     'jcrop/test' => array(
@@ -13,25 +15,19 @@ function jcrop_menu() {
 }
 
 function jcrop_test_form($form, &$form_state) {
-  $form['jcrop'] = array(
-    '#title' => t('Jcrop'),
+  $form['jcrop_sample'] = array(
+    '#title' => t('Jcrop sample'),
     '#type' => 'managed_file',
     '#description' => t('The uploaded image will be displayed on this page using the image style choosen below.'),
-    '#default_value' => variable_get('image_example_image_fid', ''),
-    '#upload_location' => 'public://',
-    '#jcrop' => array(
-      TRUE
-    )
+    '#default_value' => '',
+    '#upload_location' => 'public://sample',
+    '#jcrop' => array()
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'submit'
   );
   return $form;
-}
-
-/**
- * Implements hook_element_info().
- */
-function jcrop_element_info() {
-  $types = array();
-  return $types;
 }
 
 /**
@@ -40,30 +36,85 @@ function jcrop_element_info() {
 function jcrop_element_info_alter(&$types) {
   if (isset($types['managed_file'])) {
     $types['managed_file']['#process'][] = 'jcrop_managed_file_process';
+    //replace value_callback function
+    list($types['managed_file']['#value_callback'], $types['managed_file']['#value_callback_original']) = array(
+      'jcrop_managed_file_value', $types['managed_file']['#value_callback']
+    );
   }
 }
 
-function jcrop_managed_file_process($element, &$form_state, $form) {
-  if (empty($element['#jcrop'])) {
+function jcrop_managed_file_process($element, &$form_state, &$form) {
+  if (!isset($element['#jcrop'])) {
     return $element;
   }
   libraries_load('jcrop', 'source');
-  $element['#attached']['js'][] = drupal_get_path('module', 'jcrop') . '/jcrop.js';
-  $file = $element['#file'];
-  $element['x'] = $element['y'] = $element['width'] = $element['height'] = array(
-    '#type' => 'hidden',
-    '#width' => 9
-  );
+  $options = jcrop_js_options($element['#jcrop']);
+  $jcrop_id = $element['#id'] . '-jcrop';
+
   $element['jcrop'] = array(
-    '#id' => $element['#id'] . '-jcrop',
+    '#id' => $jcrop_id,
     '#type' => 'container',
+    '#attributes' => array(
+      'class' => array('jcrop-box')
+    ),
     'image' => array(
       '#type' => 'markup',
-      '#markup' => 'markup'
+      '#markup' => ''
+    ),
+    'x' => array(
+      '#type' => 'hidden',
+      '#attributes' => array(
+        'class' => array('jcrop-x')
+      ),
+    ),
+    'y' => array(
+      '#type' => 'hidden',
+      '#attributes' => array(
+        'class' => array('jcrop-y')
+      ),
+    ),
+    'w' => array(
+      '#type' => 'hidden',
+      '#attributes' => array(
+        'class' => array('jcrop-w')
+      ),
+    ),
+    'h' => array(
+      '#type' => 'hidden',
+      '#attributes' => array(
+        'class' => array('jcrop-h')
+      ),
     )
   );
-  drupal_add_js(array('jcrop' => array()), 'setting');
+  if (!empty($element['#file'])) {
+    $file = $element['#file'];
+    $element['jcrop']['image']['#markup'] = '<img src="' . file_create_url($file->uri) . '" class="jcrop-image"/>';
+    $element['#attached']['js'][] = drupal_get_path('module', 'jcrop') . '/jcrop.js';
+    $element['#attached']['js'][] = array(
+      'type' => 'setting',
+      'data' => array('jcrop' => array($jcrop_id => $options))
+    );
+  }
   return $element;
+}
+
+function jcrop_managed_file_value(&$element, $input = FALSE, $form_state = NULL) {
+  $return = $element['#value_callback_original']($element, $input, $form_state = NULL);
+  if (isset($element['#jcrop'])) {
+    if (!empty($return['fid']) && isset($input['jcrop'])) {
+      $crop = $input['jcrop'];
+      if (!empty($crop['w']) && !empty($crop['h'])) {
+        $file = file_load($return['fid']);
+        _jcrop_image_crop_resize(drupal_realpath($file->uri), $input['jcrop']);
+      }
+    }
+  }
+  return $return;
+}
+
+function jcrop_js_options($options = NULL) {
+  $options = (array) $options;
+  return $options;
 }
 
 /**
@@ -147,4 +198,25 @@ function jcrop_requirements($phase) {
   }
 
   return $requirements;
+}
+
+/**
+ * Crop 'n resize the image.
+ */
+function _jcrop_image_crop_resize($src, $crop = NULL, $dst = NULL) {
+  $image = image_load($src);
+  if ($image && $crop && !empty($crop['w']) && !empty($crop['h'])) {
+    $scale = isset($crop['s']) ? floatval($crop['s']) : 1;
+    $x = $crop['x'] * $scale;
+    $y = $crop['y'] * $scale;
+    $w = $crop['w'] * $scale;
+    $h = $crop['h'] * $scale;
+    $result = image_crop($image, $x, $y, $w, $h);
+    if ($scale !== 1) {
+      $result = $result && image_scale_and_crop($image, $crop['w'], $crop['h']);
+    }
+    $result = $result && image_save($image, $dst ? $dst : $src);
+    return $result;
+  }
+  return FALSE;
 }

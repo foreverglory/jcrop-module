@@ -1,7 +1,7 @@
 name = jcrop
 description = jQuery Jcrop for Module form api and Field Image widget
 package = Jcrop
-dependencies[] = file
+dependencies[] = image
 dependencies[] = libraries
 
 core = 7.x

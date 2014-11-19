@@ -1,82 +1,63 @@
 ;
 Drupal.jcrop = Drupal.jcrop || {};
 (function ($) {
-    function update(context, coords) {
-        context = $(context);
-        context.siblings(".edit-image-crop-x").val(coords.x);
-        context.siblings(".edit-image-crop-y").val(coords.y);
-        if (coords.w) {
-            context.siblings(".edit-image-crop-width").val(coords.w);
-        }
-        if (coords.h) {
-            context.siblings(".edit-image-crop-height").val(coords.h);
-        }
-        context.siblings(".edit-image-crop-changed").val(1);
-    }
     Drupal.jcrop.jcrop = {
-        change: function (context, coords) {
-            update(context, coords);
+        change: function (box, coords) {
+            jcrop_update(box, coords);
         },
-        select: function (context, coords) {
-            update(context, coords);
+        select: function (box, coords) {
+            jcrop_update(box, coords);
         },
-        dblclick: function (context, coords) {
+        dblclick: function (box, coords) {
 
         },
-        release: function (context, coords) {
+        release: function (box, coords) {
 
         }
     };
+    function jcrop_update(box, coords) {
+        $(".jcrop-x", box).val(coords.x);
+        $(".jcrop-y", box).val(coords.y);
+        $(".jcrop-w", box).val(coords.w);
+        $(".jcrop-h", box).val(coords.h);
+    }
     Drupal.behaviors.jcrop = {
         attach: function (context, settings) {
-            $('.cropbox', context).each(function () {
-                var $this = $(this);
-                var id = $this.attr("id");
-                $(this).Jcrop({
-                    onChange: function (c) {
-                        $.each(Drupal.jcrop, function () {
-                            if ($.isFunction(this.change)) {
-                                this.change(context, c);
-                            }
-                        });
-                    },
-                    onSelect: function (c) {
-                        $.each(Drupal.jcrop, function () {
-                            if ($.isFunction(this.select)) {
-                                this.select(context, c);
-                            }
-                        });
-                    },
-                    onDblClick: function (c) {
-                        $.each(Drupal.jcrop, function () {
-                            if ($.isFunction(this.dblclick)) {
-                                this.dblclick(context, c);
-                            }
-                        });
-                    },
-                    onRelease: function (c) {
-                        $.each(Drupal.jcrop, function () {
-                            if ($.isFunction(this.release)) {
-                                this.release(context, c);
-                            }
-                        });
-                    },
-                    aspectRatio: settings.jcrop[id].box.ratio,
-                    boxWidth: settings.jcrop[id].box.box_width,
-                    boxHeight: settings.jcrop[id].box.box_height,
-                    minSize: [settings.jcrop[id].minimum.width, settings.jcrop[id].minimum.height],
-                    trueSize: [
-                        settings.jcrop[id].width,
-                        settings.jcrop[id].height
-                    ],
-                    allowSelect: false,
-                    setSelect: [
-                        parseInt(widget.siblings(".edit-image-crop-x").val()),
-                        parseInt(widget.siblings(".edit-image-crop-y").val()),
-                        parseInt(widget.siblings(".edit-image-crop-width").val()) + parseInt($(widget).siblings(".edit-image-crop-x").val()),
-                        parseInt(widget.siblings(".edit-image-crop-height").val()) + parseInt($(widget).siblings(".edit-image-crop-y").val())
-                    ]
-                });
+            $('.jcrop-box', context).each(function () {
+                var $box = $(this);
+                $(".jcrop-image", $box).one("load", function () {
+                    var options = $.extend(settings.jcrop[$box.attr("id")] || {}, {
+                        onChange: function (c) {
+                            $.each(Drupal.jcrop, function () {
+                                if ($.isFunction(this.change)) {
+                                    this.change($box, c);
+                                }
+                            });
+                        },
+                        onSelect: function (c) {
+                            $.each(Drupal.jcrop, function () {
+                                if ($.isFunction(this.select)) {
+                                    this.select($box, c);
+                                }
+                            });
+                        },
+                        onDblClick: function (c) {
+                            $.each(Drupal.jcrop, function () {
+                                if ($.isFunction(this.dblclick)) {
+                                    this.dblclick($box, c);
+                                }
+                            });
+                        },
+                        onRelease: function (c) {
+                            $.each(Drupal.jcrop, function () {
+                                if ($.isFunction(this.release)) {
+                                    this.release($box, c);
+                                }
+                            });
+                        }
+                    });
+                    $(this).Jcrop(options);
+                }).trigger("load");
             });
         }
     };
