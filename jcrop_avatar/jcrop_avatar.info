@@ -1,0 +1,7 @@
+name = jcrop avatar
+description = Use jcrop.js to make user avatar
+package = Jcrop
+dependencies[] = jcrop
+
+core = 7.x
+version = 7.x-1.x

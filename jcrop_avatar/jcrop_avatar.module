@@ -1,0 +1,81 @@
+<?php
+
+/**
+ * Implements hook_form_alter().
+ */
+function jcrop_avatar_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'user_profile_form':
+      $account = $form['#user'];
+      if ($form['#user_category'] == 'account') {
+        //从系统中取出图片样式
+        $image_styles = image_styles();
+        $effects = reset($image_styles[variable_get('user_picture_style', 'medium')]['effects']);
+        $preview = $effects['data'];
+        $settings = array();
+        //定义比例
+        $settings['aspectRatio'] = $preview['width'] / $preview['height'];
+        //剪切宽限制
+        list($settings['boxWidth'], $settings['boxHeight']) = explode('x', variable_get('user_picture_jcrop_box', '400x400'));
+        //选中区域，为全部
+        $settings['setSelect'] = array(0, 0, $settings['boxWidth'], $settings['boxHeight']);
+        $form['picture']['picture_upload'] = array(
+          '#type' => 'managed_file',
+          '#title' => t('Your avatar'),
+          '#description' => "Uploaded image can be cropped.",
+          '#default_value' => '',
+          '#upload_location' => 'temporary://avatar',
+          //用于自动上传
+          '#file_auto_up' => module_exists('file_auto_up') && variable_get('user_picture_jcrop_file_auto_up', FALSE),
+          '#jcrop' => $settings,
+        );
+        $form['picture']['thumb'] = array(
+          '#type' => 'item',
+          '#id' => 'avatar-thumb',
+          '#markup' => '<div class="avatar-thumb-image">' . ( $account->picture ? '<img src="' . file_create_url($account->picture->uri) . '" />' : '') . '</div>',
+          '#description' => t('Your avatar thumb'),
+          '#attached' => array(
+            'css' => array(
+              array(
+                'type' => 'inline',
+                'data' => '.avatar-thumb-image{display:block; overflow:hidden; width:' . $preview['width'] . 'px; height:' . $preview['height'] . 'px;}'
+                . '.avatar-thumb-image img{width:' . $preview['width'] . 'px; height:' . $preview['height'] . 'px;}'
+              )
+            ),
+            'js' => array(
+              drupal_get_path('module', 'jcrop_avatar') . '/jcrop_avatar.js',
+              array(
+                'type' => 'setting',
+                'data' => array('avatar' => array('preview' => $preview))
+              )
+            )
+          )
+        );
+        $form['#validate'][] = 'jcrop_avatar_validate';
+        unset($form['picture']['picture_current'], $form['picture']['picture_delete']);
+      }
+      break;
+    case 'user_admin_settings':
+      $form['personalization']['pictures']['user_picture_jcrop_box'] = array(
+        '#type' => 'textfield',
+        '#title' => t('User picture jcrop box'),
+        '#description' => t('Use jcrop.js make avatar for box size.'),
+        '#default_value' => variable_get('user_picture_jcrop_box', '400x400'),
+        '#size' => 30,
+      );
+      $form['personalization']['pictures']['user_picture_jcrop_file_auto_up'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('User picture jcrop file auto upload'),
+        '#description' => t('Use jcrop.js make avatar, file auto upload.'),
+        '#default_value' => variable_get('user_picture_jcrop_file_auto_up', FALSE),
+        '#access' => module_exists('file_auto_up'),
+      );
+      break;
+  }
+}
+
+function jcrop_avatar_validate(&$form, &$form_state) {
+  if (!empty($form_state['values']['picture_upload'])) {
+    $form_state['values']['picture_upload'] = file_load($form_state['values']['picture_upload']);
+  }
+}
