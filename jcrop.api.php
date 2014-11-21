@@ -20,7 +20,8 @@ function jcrop_example_form() {
   (function ($) {
       Drupal.behaviors.jcrop_example = {
           attach: function (context, settings) {
-              $(".jcrop-box .jcrop-image", context).on("load", function (e, c) {
+              //添加 .jcrop-processed 为了防止重复绑定事件
+              $(".jcrop-box .jcrop-image.jcrop-processed", context).on("jcrop", function (e, c) {
                   // js code
                   // load jcrop image hook
               }).on("select", function (event, coords, jcrop) {
