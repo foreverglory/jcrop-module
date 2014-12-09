@@ -3,6 +3,7 @@ description = jQuery Jcrop for Module form api and Field Image widget
 package = Jcrop
 dependencies[] = image
 dependencies[] = libraries
+dependencies[] = jquery_update
 
 core = 7.x
-version = 7.x-1.0-dev
+version = 7.x-1.0
